@@ -1,6 +1,6 @@
 # EnclaveOS #
 
-<https://github.com/distrust-foundation/enclaveos>
+<https://git.distrust.co/public/enclaveos>
 
 ## About ##
 
@@ -16,10 +16,10 @@ security applications.
 
 | Platform                   | Target  | Status   | Verified boot Method  |
 |----------------------------|:-------:|:--------:|:---------------------:|
-| Generic/Qemu               | generic | working  | Safeboot or Heads     |
-| AWS Nitro Enclaves         | aws     | building | Nitro attestation API |
+| AWS Nitro Enclaves         | aws     | booting  | Nitro attestation API |
 | GCP Confidential Compute   | gcp     | research | vTPM 2.0 attestation  |
 | Azure Confidential VMs     | azure   | research | vTPM 2.0 attestation  |
+| Generic/Qemu               | generic | research | vTPM 2.0 attestation  |
 
 ## Features ##
 
@@ -49,24 +49,6 @@ security applications.
  * Docker 20+
  * GNU Make
 
-### Examples ###
-
-### Build given target
+### Build
 ```
-make TARGET=generic
-```
-
-### Boot generic image in Qemu
-```
-make run
-```
-
-### Enter shell in toolchain environment
-```
-make toolchain-shell
-```
-
-### Update toolchain depedendency pins
-```
-make toolchain-update
-```
+make
