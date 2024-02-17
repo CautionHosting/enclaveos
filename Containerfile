@@ -53,9 +53,10 @@ RUN <<-EOF
 	set -eux
 	env -C /src/init cargo build ${CARGOFLAGS}
 	cp /src/init/target/${TARGET}/release/init /
-    file /init | grep "static-pie"
+	file /init | grep "static-pie"
 EOF
 WORKDIR /build_cpio
+ENV KBUILD_BUILD_TIMESTAMP=1
 COPY <<-EOF initramfs.list
 	file /init     init    0755 0 0
 	file /nsm.ko   /nsm.ko 0755 0 0
@@ -74,11 +75,10 @@ COPY <<-EOF initramfs.list
 	dir  /dev/pts          0755 0 0
 	nod  /dev/console      0600 0 0 c 5 1
 EOF
-ENV KBUILD_BUILD_TIMESTAMP=1
 RUN <<-EOF
-    find . -exec touch -hcd "@0" "{}" +
-    gen_init_cpio -t 1 initramfs.list > rootfs.cpio
-    touch -hcd "@0" rootfs.cpio
+	find . -exec touch -hcd "@0" "{}" +
+	gen_init_cpio -t 1 initramfs.list > rootfs.cpio
+	touch -hcd "@0" rootfs.cpio
 EOF
 WORKDIR /build_eif
 RUN eif_build \
