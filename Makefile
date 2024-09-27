@@ -14,11 +14,16 @@ out/enclaveos.tar: out \
 	docker build \
 		--tag $(REGISTRY)/enclaveos \
 		--progress=plain \
-		--output "\
-			type=oci,\
-			rewrite-timestamp=true,\
-			force-compression=true,\
-			name=enclaveos,\
-			dest=$@" \
+		--output type=local,rewrite-timestamp=true,dest=out\
 		-f Containerfile \
 		src/
+
+.PHONY: run
+run: out/nitro.eif
+	sudo nitro-cli \
+		run-enclave \
+		--cpu-count 2 \
+		--memory 512M \
+		--eif-path out/nitro.eif \
+		--debug-mode \
+		--attach-console
