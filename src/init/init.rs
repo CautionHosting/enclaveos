@@ -10,7 +10,6 @@ fn init_rootfs() {
     let no_se = MS_NOSUID | MS_NOEXEC;
     let args = [
         ("devtmpfs",    "/dev",           "devtmpfs", no_se,  "mode=0755"),
-        ("devtmpfs",    "/dev",           "devtmpfs", no_se,  "mode=0755"),
         ("devpts",      "/dev/pts",       "devpts",   no_se,  ""),
         ("shm",         "/dev/shm",       "tmpfs",    no_dse, "mode=0755"),
         ("proc",        "/proc",          "proc",     no_dse, "hidepid=2"),
@@ -20,6 +19,12 @@ fn init_rootfs() {
         ("cgroup_root", "/sys/fs/cgroup", "tmpfs",    no_dse, "mode=0755"),
     ];
     for (src, target, fstype, flags, data) in args {
+        if std::fs::exists(target).unwrap_or(false) {
+            match std::fs::create_dir_all(target) {
+                Ok(()) => dmesg(format!("Created mount point {}", target)),
+                Err(e) => eprintln!("{}", e),
+            }
+        }
         match mount(src, target, fstype, flags, data) {
             Ok(())=> dmesg(format!("Mounted {}", target)),
             Err(e)=> eprintln!("{}", e),
