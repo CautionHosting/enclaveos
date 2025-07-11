@@ -1,7 +1,10 @@
+mod system;
+mod aws;
+
 use system::{seed_entropy, reboot, freopen, mount, dmesg};
 
 //TODO: Feature flag
-use aws::{init_platform, get_entropy};
+use aws::init_platform;
 
 // Mount common filesystems with conservative permissions
 fn init_rootfs() {
@@ -46,10 +49,6 @@ fn boot(){
     init_rootfs();
     init_console();
     init_platform();
-    match seed_entropy(4096, get_entropy) {
-        Ok(size)=> dmesg(format!("Seeded kernel with entropy: {}", size)),
-        Err(e)=> eprintln!("{}", e)
-    };
 }
 
 fn main() {
