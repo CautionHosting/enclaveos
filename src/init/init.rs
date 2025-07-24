@@ -1,15 +1,14 @@
-use system::{seed_entropy, reboot, freopen, mount, dmesg};
+use system::{dmesg, freopen, mount, reboot, seed_entropy};
 
 //TODO: Feature flag
-use aws::{init_platform, get_entropy};
+use aws::{get_entropy, init_platform};
 
 // Mount common filesystems with conservative permissions
 fn init_rootfs() {
-    use libc::{MS_NOSUID, MS_NOEXEC, MS_NODEV };
+    use libc::{MS_NODEV, MS_NOEXEC, MS_NOSUID};
     let no_dse = MS_NODEV | MS_NOSUID | MS_NOEXEC;
     let no_se = MS_NOSUID | MS_NOEXEC;
     let args = [
-        ("devtmpfs",    "/dev",           "devtmpfs", no_se,  "mode=0755"),
         ("devtmpfs",    "/dev",           "devtmpfs", no_se,  "mode=0755"),
         ("devpts",      "/dev/pts",       "devpts",   no_se,  ""),
         ("shm",         "/dev/shm",       "tmpfs",    no_dse, "mode=0755"),
@@ -21,8 +20,8 @@ fn init_rootfs() {
     ];
     for (src, target, fstype, flags, data) in args {
         match mount(src, target, fstype, flags, data) {
-            Ok(())=> dmesg(format!("Mounted {}", target)),
-            Err(e)=> eprintln!("{}", e),
+            Ok(()) => dmesg(format!("Mounted {}", target)),
+            Err(e) => eprintln!("{}", e),
         }
     }
 }
@@ -36,19 +35,19 @@ fn init_console() {
     ];
     for (filename, mode, file) in args {
         match freopen(filename, mode, file) {
-            Ok(())=> {},
-            Err(e)=> eprintln!("{}", e),
+            Ok(()) => {}
+            Err(e) => eprintln!("{}", e),
         }
     }
 }
 
-fn boot(){
+fn boot() {
     init_rootfs();
     init_console();
     init_platform();
     match seed_entropy(4096, get_entropy) {
-        Ok(size)=> dmesg(format!("Seeded kernel with entropy: {}", size)),
-        Err(e)=> eprintln!("{}", e)
+        Ok(size) => dmesg(format!("Seeded kernel with entropy: {}", size)),
+        Err(e) => eprintln!("{}", e),
     };
 }
 

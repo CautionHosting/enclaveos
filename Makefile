@@ -11,7 +11,7 @@ out/enclaveos.tar: out \
 		src/init \
 		src/aws \
 	)
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
 		--tag $(REGISTRY)/enclaveos \
 		--progress=plain \
 		--output type=local,rewrite-timestamp=true,dest=out\
