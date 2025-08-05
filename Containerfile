@@ -15,59 +15,44 @@ FROM stagex/core-git@sha256:7ab36d6183162f0397eba3d5603beceb455982a1f2c122740484
 FROM stagex/core-pkgconf@sha256:608b378949cedc86df6350e5ec428b0e114bb7bc46bc33330b51215cc8ac4a68 AS core-pkgconf
 FROM stagex/core-busybox@sha256:17e496211470fbd77057692619295e32c841e90312e48bce56a171fdb041b0c9 AS core-busybox
 FROM stagex/user-linux-nitro@sha256:655924404a008c6c70c3411e7b32d6558ac388bcc3a5a02431029e63c93d1985 AS user-linux-nitro
+FROM stagex/user-cpio@sha256:05701450a186fa1cb5a8287f7fa4d216e610a15d22c2e3e86d70ac3550d9cd3c AS user-cpio
 
 FROM scratch as base
-ENV TARGET=x86_64-unknown-linux-musl
-ENV RUSTFLAGS="-C target-feature=+crt-static"
-ENV CARGOFLAGS="--locked --no-default-features --release --target ${TARGET}"
-ENV OPENSSL_STATIC=true
 
-COPY --from=busybox . /
-COPY --from=musl . /
-COPY --from=libunwind . /
-COPY --from=openssl . /
-COPY --from=zlib . /
-COPY --from=ca-certificates . /
-COPY --from=binutils . /
-COPY --from=pkgconf . /
-COPY --from=git . /
-COPY --from=rust . /
-COPY --from=gen_initramfs . /
-COPY --from=eif_build . /
-COPY --from=llvm . /
-COPY --from=gcc . /
-COPY --from=linux-nitro /bzImage .
-COPY --from=linux-nitro /nsm.ko .
-COPY --from=linux-nitro /linux.config .
+COPY --from=core-busybox . /
+COPY --from=core-musl . /
+COPY --from=core-libunwind . /
+COPY --from=core-openssl . /
+COPY --from=core-zlib . /
+COPY --from=core-ca-certificates . /
+COPY --from=core-binutils . /
+COPY --from=core-pkgconf . /
+COPY --from=core-git . /
+COPY --from=core-rust . /
+COPY --from=user-gen_initramfs . /
+COPY --from=user-eif_build . /
+COPY --from=core-llvm . /
+COPY --from=core-gcc . /
+COPY --from=user-linux-nitro /bzImage .
+COPY --from=user-linux-nitro /linux.config .
+COPY --from=user-cpio . /
 ADD . /src
 
 FROM base as build
-WORKDIR /src/init
-RUN cargo build ${CARGOFLAGS}
 WORKDIR /build_cpio
-RUN cp /src/init/target/${TARGET}/release/init init
+COPY --from=local/nit /usr/bin/init /build_cpio/rootfs/init
 ENV KBUILD_BUILD_TIMESTAMP=1
-COPY <<-EOF initramfs.list
-	file /init     init    0755 0 0
-	file /nsm.ko   /nsm.ko 0755 0 0
-	dir  /run              0755 0 0
-	dir  /tmp              0755 0 0
-	dir  /etc              0755 0 0
-	dir  /bin              0755 0 0
-	dir  /sbin             0755 0 0
-	dir  /proc             0755 0 0
-	dir  /sys              0755 0 0
-	dir  /usr              0755 0 0
-	dir  /usr/bin          0755 0 0
-	dir  /usr/sbin         0755 0 0
-	dir  /dev              0755 0 0
-	dir  /dev/shm          0755 0 0
-	dir  /dev/pts          0755 0 0
-	nod  /dev/console      0600 0 0 c 5 1
-EOF
 RUN <<-EOF
-	find . -exec touch -hcd "@0" "{}" +
-	gen_init_cpio -t 1 initramfs.list > rootfs.cpio
+	# NOTE: Relative directory is important!
+	( \
+		cd /build_cpio/rootfs; \
+		find . -exec touch -hcd "@0" "{}" + -print0 \
+			| sort -z \
+			| cpio --null --create --verbose --reproducible --format=newc \
+			| gzip --best \
+			> ../rootfs.cpio \
+	)
+	# gen_init_cpio -t 1 initramfs.list > rootfs.cpio
 	touch -hcd "@0" rootfs.cpio
 EOF
 WORKDIR /build_eif
