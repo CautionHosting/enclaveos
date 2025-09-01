@@ -6,17 +6,13 @@ default: out/nitro.eif
 out:
 	mkdir out
 
-out/nitro.eif: out \
-	$(shell git ls-files \
-		src/init \
-		src/aws \
-	)
+out/nitro.eif: out
 	docker build \
 		--tag $(REGISTRY)/enclaveos \
 		--progress=plain \
 		--output type=local,rewrite-timestamp=true,dest=out\
 		-f Containerfile \
-		src/
+		.
 
 .PHONY: run
 run: out/nitro.eif
