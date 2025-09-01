@@ -15,6 +15,9 @@ FROM stagex/user-linux-nitro@sha256:aa1006d91a7265b33b86160031daad2fdf54ec2663ed
 FROM stagex/user-nit@sha256:60b6eef4534ea6ea78d9f29e4c7feb27407b615424f20ad8943d807191688be7 AS user-nit
 FROM stagex/user-cpio@sha256:9c8bf39001eca8a71d5617b46f8c9b4f7426db41a052f198d73400de6f8a16df AS user-cpio
 
+# NOTE: Caddy-specific
+FROM stagex/user-caddy@sha256:9776df59908dc7107ad150fd960bb40e9a5378b68b459d9ef6e9aca27e49201d AS user-caddy
+
 FROM scratch AS base
 
 COPY --from=core-busybox . /
@@ -37,7 +40,11 @@ COPY --from=user-linux-nitro /linux.config .
 FROM base AS build
 WORKDIR /build_cpio
 RUN mkdir /build_cpio/rootfs
-COPY --from=user-nit /usr/bin/init rootfs/init
+COPY --from=user-nit . rootfs
+COPY --from=core-busybox . rootfs
+COPY rootfs/* rootfs
+# NOTE: Caddy-specific
+COPY --from=user-caddy . rootfs
 ENV KBUILD_BUILD_TIMESTAMP=1
 WORKDIR /build_cpio/rootfs
 RUN <<-EOF
@@ -53,13 +60,14 @@ RUN <<-EOF
 		> /build_cpio/rootfs.cpio
 EOF
 WORKDIR /build_eif
+# NOTE: from a ramdisk, `rdinit` should be used over `init`.
 RUN eif_build \
 	--kernel /bzImage \
 	--kernel_config /linux.config \
 	--ramdisk /build_cpio/rootfs.cpio \
 	--pcrs_output /nitro.pcrs \
 	--output /nitro.eif \
-	--cmdline 'reboot=k initrd=0x2000000,3228672 root=/dev/ram0 panic=1 pci=off nomodules console=ttyS0 i8042.noaux i8042.nomux i8042.nopnp i8042.dumbkbd'
+	--cmdline 'reboot=k initrd=0x2000000,3228672 root=/dev/ram0 rdinit=/usr/bin/init panic=1 pci=off nomodules console=ttyS0 i8042.noaux i8042.nomux i8042.nopnp i8042.dumbkbd nit.target=/usr/local/bin/start.sh'
 
 FROM base AS install
 WORKDIR /rootfs
