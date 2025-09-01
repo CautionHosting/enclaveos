@@ -40,8 +40,10 @@ COPY --from=user-linux-nitro /linux.config .
 FROM base AS build
 WORKDIR /build_cpio
 RUN mkdir /build_cpio/rootfs
-COPY --from=user-nit . rootfs
+# NOTE: The spacing here is significant. Busybox ships its own init system, so
+# we need to ensure we copy our own init system _after_ it.
 COPY --from=core-busybox . rootfs
+COPY --from=user-nit . rootfs
 COPY rootfs/* rootfs
 # NOTE: Caddy-specific
 COPY --from=user-caddy . rootfs
