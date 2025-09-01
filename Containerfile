@@ -49,6 +49,7 @@ COPY rootfs rootfs
 
 # NOTE: Caddy example specific
 COPY --from=user-caddy . rootfs
+COPY --from=core-musl . rootfs
 COPY --from=user-socat . rootfs
 
 COPY <<-EOF rootfs/etc/hosts
