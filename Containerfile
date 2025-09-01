@@ -44,7 +44,7 @@ RUN mkdir /build_cpio/rootfs
 # we need to ensure we copy our own init system _after_ it.
 COPY --from=core-busybox . rootfs
 COPY --from=user-nit . rootfs
-COPY rootfs/* rootfs
+COPY rootfs rootfs
 # NOTE: Caddy-specific
 COPY --from=user-caddy . rootfs
 ENV KBUILD_BUILD_TIMESTAMP=1
