@@ -7,64 +7,50 @@ FROM stagex/core-openssl@sha256:d6487f0cb15f4ee02b420c717cb9abd85d73043c0bb3a2c6
 FROM stagex/user-eif_build@sha256:935032172a23772ea1a35c6334aa98aa7b0c46f9e34a040347c7b2a73496ef8a AS user-eif_build
 FROM stagex/user-gen_initramfs@sha256:a87e9a3fa8468d2e08b5abb0a6da4c7a11df22273e2c526cb22e6b131151def8 AS user-gen_initramfs
 FROM stagex/core-libunwind@sha256:eb66122d8fc543f5e2f335bb1616f8c3a471604383e2c0a9df4a8e278505d3bc AS core-libunwind
-FROM stagex/core-rust@sha256:2ea0be043b92321b5d1c2784911a770ccca28c09c3cf6a0f81fc0cd05a2abb08 AS core-rust
 FROM stagex/core-musl@sha256:d9af23284cca2e1002cd53159ada469dfe6d6791814e72d6163c7de18d4ae701 AS core-musl
 FROM stagex/core-git@sha256:6b3e0055f6aeaa8465f207a871db2c63a939cd7406113e9d769ff3b37239f3d0 AS core-git
 FROM stagex/core-pkgconf@sha256:52624a89bb8cc684bc0391fcb7770ded2bbcb281e84bdb68a31fce127439fd7b AS core-pkgconf
 FROM stagex/core-busybox@sha256:637b1e0d9866807fac94c22d6dc4b2e1f45c8a5ca1113c88172e0324a30c7283 AS core-busybox
 FROM stagex/user-linux-nitro@sha256:aa1006d91a7265b33b86160031daad2fdf54ec2663ed5ccbd312567cc9beff2c AS user-linux-nitro
+FROM stagex/user-nit@sha256:60b6eef4534ea6ea78d9f29e4c7feb27407b615424f20ad8943d807191688be7 AS user-nit
+FROM stagex/user-cpio@sha256:9c8bf39001eca8a71d5617b46f8c9b4f7426db41a052f198d73400de6f8a16df AS user-cpio
 
-FROM scratch as base
-ENV TARGET=x86_64-unknown-linux-musl
-ENV RUSTFLAGS="-C target-feature=+crt-static"
-ENV CARGOFLAGS="--locked --no-default-features --release --target ${TARGET}"
-ENV OPENSSL_STATIC=true
+FROM scratch AS base
 
-COPY --from=busybox . /
-COPY --from=musl . /
-COPY --from=libunwind . /
-COPY --from=openssl . /
-COPY --from=zlib . /
-COPY --from=ca-certificates . /
-COPY --from=binutils . /
-COPY --from=pkgconf . /
-COPY --from=git . /
-COPY --from=rust . /
-COPY --from=gen_initramfs . /
-COPY --from=eif_build . /
-COPY --from=llvm . /
-COPY --from=gcc . /
-COPY --from=linux-nitro /bzImage .
-COPY --from=linux-nitro /linux.config .
-ADD . /src
+COPY --from=core-busybox . /
+COPY --from=core-musl . /
+COPY --from=core-libunwind . /
+COPY --from=core-openssl . /
+COPY --from=core-zlib . /
+COPY --from=core-ca-certificates . /
+COPY --from=core-binutils . /
+COPY --from=core-pkgconf . /
+COPY --from=core-git . /
+COPY --from=user-gen_initramfs . /
+COPY --from=user-eif_build . /
+COPY --from=core-llvm . /
+COPY --from=core-gcc . /
+COPY --from=user-cpio . /
+COPY --from=user-linux-nitro /bzImage .
+COPY --from=user-linux-nitro /linux.config .
 
-FROM base as build
-WORKDIR /src/init
-RUN cargo build ${CARGOFLAGS}
+FROM base AS build
 WORKDIR /build_cpio
-RUN cp /src/init/target/${TARGET}/release/init init
+RUN mkdir /build_cpio/rootfs
+COPY --from=user-nit /usr/bin/init rootfs/init
 ENV KBUILD_BUILD_TIMESTAMP=1
-COPY <<-EOF initramfs.list
-	file /init     init    0755 0 0
-	dir  /run              0755 0 0
-	dir  /tmp              0755 0 0
-	dir  /etc              0755 0 0
-	dir  /bin              0755 0 0
-	dir  /sbin             0755 0 0
-	dir  /proc             0755 0 0
-	dir  /sys              0755 0 0
-	dir  /usr              0755 0 0
-	dir  /usr/bin          0755 0 0
-	dir  /usr/sbin         0755 0 0
-	dir  /dev              0755 0 0
-	dir  /dev/shm          0755 0 0
-	dir  /dev/pts          0755 0 0
-	nod  /dev/console      0600 0 0 c 5 1
-EOF
+WORKDIR /build_cpio/rootfs
 RUN <<-EOF
-	find . -exec touch -hcd "@0" "{}" +
-	gen_init_cpio -t 1 initramfs.list > rootfs.cpio
-	touch -hcd "@0" rootfs.cpio
+	find . -exec touch -hcd "@0" "{}" + -print0 \
+		| sort -z \
+		| cpio \
+		--null \
+		--create \
+		--verbose \
+		--reproducible \
+		--format=newc \
+		| gzip --best \
+		> /build_cpio/rootfs.cpio
 EOF
 WORKDIR /build_eif
 RUN eif_build \
@@ -75,10 +61,10 @@ RUN eif_build \
 	--output /nitro.eif \
 	--cmdline 'reboot=k initrd=0x2000000,3228672 root=/dev/ram0 panic=1 pci=off nomodules console=ttyS0 i8042.noaux i8042.nomux i8042.nopnp i8042.dumbkbd'
 
-FROM base as install
+FROM base AS install
 WORKDIR /rootfs
 COPY --from=build /nitro.eif .
 COPY --from=build /nitro.pcrs .
 
-FROM scratch as package
+FROM scratch AS package
 COPY --from=install /rootfs .
