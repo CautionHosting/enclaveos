@@ -1,0 +1,3 @@
+localhost:3000 {
+	respond "Hello, world! I'm in an enclave :^)"
+}
