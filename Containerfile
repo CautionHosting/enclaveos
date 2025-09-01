@@ -14,6 +14,7 @@ FROM stagex/core-busybox@sha256:637b1e0d9866807fac94c22d6dc4b2e1f45c8a5ca1113c88
 FROM stagex/user-linux-nitro@sha256:aa1006d91a7265b33b86160031daad2fdf54ec2663ed5ccbd312567cc9beff2c AS user-linux-nitro
 FROM stagex/user-nit@sha256:60b6eef4534ea6ea78d9f29e4c7feb27407b615424f20ad8943d807191688be7 AS user-nit
 FROM stagex/user-cpio@sha256:9c8bf39001eca8a71d5617b46f8c9b4f7426db41a052f198d73400de6f8a16df AS user-cpio
+FROM stagex/user-socat@sha256:4d1b7a403eba65087a3f69200d2644d01b63f0ea81ef171cedc17de490c8c9a0 AS user-socat
 
 # NOTE: Caddy-specific
 FROM stagex/user-caddy@sha256:9776df59908dc7107ad150fd960bb40e9a5378b68b459d9ef6e9aca27e49201d AS user-caddy
@@ -45,8 +46,15 @@ RUN mkdir /build_cpio/rootfs
 COPY --from=core-busybox . rootfs
 COPY --from=user-nit . rootfs
 COPY rootfs rootfs
-# NOTE: Caddy-specific
+
+# NOTE: Caddy example specific
 COPY --from=user-caddy . rootfs
+COPY --from=user-socat . rootfs
+
+COPY <<-EOF rootfs/etc/hosts
+	127.0.0.1	localhost
+EOF
+
 ENV KBUILD_BUILD_TIMESTAMP=1
 WORKDIR /build_cpio/rootfs
 RUN <<-EOF
