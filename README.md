@@ -12,6 +12,59 @@ This is intended as a reference repository which could serve as a boilerplate
 to build your own hardened and immutable operating system images for high
 security applications.
 
+## Architecture ##
+
+```mermaid
+---
+config:
+  theme: base
+---
+C4Context
+    title System Context diagram for Internet Banking System
+    Boundary(enclaveos, "EnclaveOS") {
+        System(kernel1,"Offline Kernel")
+        System(nit,"Init System","nit")
+        System(serviced,"Service Manager","serviced")
+        System(guestctl,"Guest Management","guestctl")
+        BiRel(guestctl,gateway-kernel,"vsock")
+        BiRel(guestctl,enclave-kernel,"vsock")
+        BiRel(guestctl,bootproof-agent,"vsock") 
+        System(bootproof-agent,"Attestation Agent","bootproof-agent")
+        Boundary(iommu, "IOMMU") {
+            Boundary(enclave-vm, "Enclave VM") {
+                System(enclave-kernel,"Offline Kernel")
+                System(user-service,"User Provided Service")
+                System(keyforkd,"Keyfork Daemon")
+            }
+            Boundary(gateway-vm", "Gateway VM") {
+                System(gateway-kernel,"Online Kernel")
+                System(enclaved,"EnclaveOS API")
+                System(bootproofd,"Bootproof API")
+            }
+        }
+        Boundary(b1,"Hardware") {   
+            System(attest1,"TEE/HSM","TPM2, Nitro, TDX, SEV")
+            System(nic1, "NIC", "")
+            System(disk1,"Disk","")
+        }
+    }
+    Person(user1, "Client", "End User")
+    System(endorsement-api,"Platform Endorsement API","AWS,GCP,Azure")
+    Rel(endorsement-api,gateway-kernel,"")
+    Rel(kernel1,nit,"")
+    Rel(nit,serviced,"")
+    Rel(serviced,guestctl,"")
+    BiRel(attest1,bootproof-agent,"")
+    Rel(nic1,gateway-kernel,"iommu")
+    Rel(disk1,enclave-kernel,"iommu")
+    BiRel(user-service,enclave-kernel,"")
+    BiRel(keyforkd,user-service,"")
+    BiRel(keyforkd,enclave-kernel,"")
+    BiRel(user1,gateway-kernel,"vsock")
+    BiRel(gateway-kernel,bootproofd,"")
+    BiRel(gateway-kernel,enclaved,"")
+```
+
 ## Platforms ##
 
 | Platform                   | Target  | Status   | Verified boot Method  |
