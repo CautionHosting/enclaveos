@@ -1,11 +1,12 @@
-use system::{seed_entropy, reboot, freopen, mount, dmesg};
-
 //TODO: Feature flag
-use aws::{init_platform, get_entropy};
+use aws::{get_entropy, init_platform};
+use std::env;
+use std::process::Command;
+use system::{dmesg, freopen, mount, reboot, seed_entropy};
 
 // Mount common filesystems with conservative permissions
 fn init_rootfs() {
-    use libc::{MS_NOSUID, MS_NOEXEC, MS_NODEV };
+    use libc::{MS_NODEV, MS_NOEXEC, MS_NOSUID};
     let no_dse = MS_NODEV | MS_NOSUID | MS_NOEXEC;
     let no_se = MS_NOSUID | MS_NOEXEC;
     let args = [
@@ -20,9 +21,13 @@ fn init_rootfs() {
         ("cgroup_root", "/sys/fs/cgroup", "tmpfs",    no_dse, "mode=0755"),
     ];
     for (src, target, fstype, flags, data) in args {
+        match std::fs::create_dir_all(target) {
+            Ok(()) => dmesg(format!("Created mount point {}", target)),
+            Err(e) => eprintln!("Failed to create {}: {}", target, e),
+        }
         match mount(src, target, fstype, flags, data) {
-            Ok(())=> dmesg(format!("Mounted {}", target)),
-            Err(e)=> eprintln!("{}", e),
+            Ok(()) => dmesg(format!("Mounted {}", target)),
+            Err(e) => eprintln!("Failed to mount {}: {}", target, e),
         }
     }
 }
@@ -36,7 +41,7 @@ fn init_console() {
     ];
     for (filename, mode, file) in args {
         match freopen(filename, mode, file) {
-            Ok(())=> {},
+            Ok(())=> {}
             Err(e)=> eprintln!("{}", e),
         }
     }
@@ -48,12 +53,33 @@ fn boot(){
     init_platform();
     match seed_entropy(4096, get_entropy) {
         Ok(size)=> dmesg(format!("Seeded kernel with entropy: {}", size)),
-        Err(e)=> eprintln!("{}", e)
+        Err(e)=> eprintln!("{}", e),
     };
 }
 
 fn main() {
     boot();
     dmesg("EnclaveOS Booted".to_string());
+
+    // Set basic environment
+    env::set_var("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/");
+
+    // Execute our shell-based init script
+    match Command::new("/bin/sh").arg("/init.sh").spawn() {
+        Ok(mut child) => {
+            dmesg("Spawned init.sh script".to_string());
+            // Wait for the child process to finish
+            match child.wait() {
+                Ok(status) => dmesg(format!("init.sh exited with status: {}", status)),
+                Err(e) => eprintln!("Error waiting for init.sh: {}", e),
+            }
+        }
+        Err(e) => {
+            eprintln!("FATAL: Failed to execute /bin/sh /init.sh: {}", e);
+            eprintln!("This likely means busybox or init.sh is missing from initramfs");
+        }
+    }
+
+    dmesg("EnclaveOS shutting down".to_string());
     reboot();
 }
