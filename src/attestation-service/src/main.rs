@@ -129,7 +129,6 @@ async fn main() {
         });
 
     let routes = health
-        .or(attestation)
         .or(attestation_post);
 
     println!("Attestation service ready!");
