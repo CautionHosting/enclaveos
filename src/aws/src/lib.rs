@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Distrust LLC
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+
 use system::{dmesg, SystemError};
 
 // Signal to Nitro hypervisor that booting was successful
