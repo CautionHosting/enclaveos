@@ -1,4 +1,7 @@
-use libc::{c_int, c_ulong, c_void};
+// SPDX-FileCopyrightText: 2025 Distrust LLC
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+
+use libc::{ c_ulong, c_int, c_void };
 use std::{
     ffi::CString,
     fmt,

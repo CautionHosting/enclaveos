@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Distrust LLC
+# SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+
 FROM stagex/binutils:sx2024.09.0@sha256:30a1bd110273894fe91c3a4a2103894f53eaac43cf12a035008a6982cb0e6908 AS binutils
 FROM stagex/ca-certificates:sx2024.09.0@sha256:33787f1feb634be4232a6dfe77578c1a9b890ad82a2cf18c11dd44507b358803 AS ca-certificates
 FROM stagex/gcc:sx2024.09.0@sha256:439bf36289ef036a934129d69dd6b4c196427e4f8e28bc1a3de5b9aab6e062f0 AS gcc

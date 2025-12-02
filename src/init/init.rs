@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Distrust LLC
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+
 //TODO: Feature flag
 use aws::{get_entropy, init_platform};
 use std::env;
