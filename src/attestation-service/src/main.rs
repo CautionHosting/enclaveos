@@ -139,7 +139,7 @@ async fn main() {
                 }
             };
 
-            let metadata_as_bytes = serde_json::to_vec(&metadata).unwrap_or(vec![]);
+            let metadata_as_bytes = serde_json::to_vec(&metadata).unwrap_or(vec![0x00]);
 
             match get_attestation_document(
                 Some(&metadata_as_bytes),
