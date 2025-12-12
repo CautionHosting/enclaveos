@@ -36,7 +36,7 @@ fn read_manifest() -> Option<serde_json::Value> {
 
 /// Read metadata.json from filesystem if it exists
 fn read_metadata() -> Result<serde_json::Value> {
-    match std::fs::read_to_string("/manifest.json") {
+    match std::fs::read_to_string("/metadata.json") {
         Ok(content) => {
             let value = serde_json::from_str(&content)?;
             Ok(value)
