@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use warp::Filter;
 
+type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
+
 #[derive(Debug, Serialize)]
 struct AttestationResponse {
     attestation_document: String,
@@ -30,6 +32,22 @@ fn read_manifest() -> Option<serde_json::Value> {
     std::fs::read_to_string("/manifest.json")
         .ok()
         .and_then(|content| serde_json::from_str(&content).ok())
+}
+
+/// Read metadata.json from filesystem if it exists
+fn read_metadata() -> Result<serde_json::Value> {
+    match std::fs::read_to_string("/manifest.json") {
+        Ok(content) => {
+            let value = serde_json::from_str(&content)?;
+            Ok(value)
+        }
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                Ok(serde_json::Value::Object(serde_json::Map::default()))
+            }
+            _ => Err(e.into()),
+        },
+    }
 }
 
 /// Get attestation document from NSM device using official AWS API
@@ -70,11 +88,12 @@ async fn main() {
     println!("Starting Attestation Service on port 5000...");
 
     // Health check endpoint
-    let health = warp::path("health")
-        .map(|| warp::reply::json(&serde_json::json!({
+    let health = warp::path("health").map(|| {
+        warp::reply::json(&serde_json::json!({
             "status": "ok",
             "service": "attestation"
-        })));
+        }))
+    });
 
     // Attestation with nonce challenge endpoint (POST)
     // REQUIRED: nonce field must be provided to prevent replay attacks
@@ -94,15 +113,36 @@ async fn main() {
                         attestation_document: String::new(),
                         pcrs: None,
                         manifest,
-                        error: Some("Nonce is required for attestation requests (replay attack protection)".to_string()),
+                        error: Some(
+                            "Nonce is required for attestation requests (replay attack protection)"
+                                .to_string(),
+                        ),
                     });
                 }
             };
 
             println!("Attestation request with nonce ({} bytes)", nonce.len());
 
+            // Get metadata and format as bytes
+            let metadata = match read_metadata() {
+                Ok(metadata) => metadata,
+                Err(e) => {
+                    eprintln!("Error encountered while parsing metadata: {e}");
+                    return warp::reply::json(&AttestationResponse {
+                        attestation_document: String::new(),
+                        pcrs: None,
+                        manifest,
+                        error: Some(
+                            "Unexpected error encountered while reading metadata".to_string(),
+                        ),
+                    });
+                }
+            };
+
+            let metadata_as_bytes = serde_json::to_vec(&metadata).unwrap_or(vec![]);
+
             match get_attestation_document(
-                req.user_data.as_deref(),
+                Some(&metadata_as_bytes),
                 Some(&nonce),
                 req.public_key.as_deref(),
             ) {
@@ -128,11 +168,8 @@ async fn main() {
             }
         });
 
-    let routes = health
-        .or(attestation_post);
+    let routes = health.or(attestation_post);
 
     println!("Attestation service ready!");
-    warp::serve(routes)
-        .run(([0, 0, 0, 0], 5000))
-        .await;
+    warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
 }
