@@ -102,7 +102,7 @@ async fn main() {
         .and(warp::body::json())
         .map(|req: AttestationRequest| {
             // Read manifest once at the start
-            let manifest = read_manifest();
+            let mut manifest = read_manifest();
 
             // Require nonce for replay attack protection
             let nonce = match req.nonce {
@@ -140,6 +140,9 @@ async fn main() {
             };
 
             let metadata_as_bytes = serde_json::to_vec(&metadata).unwrap_or(vec![0x00]);
+            if let Some(serde_json::Value::Object(manifest)) = manifest.as_mut() {
+                manifest.insert("hello".into(), serde_json::json!("world"));
+            }
 
             match get_attestation_document(
                 Some(&metadata_as_bytes),
