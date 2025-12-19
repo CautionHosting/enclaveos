@@ -6,6 +6,7 @@ use nsm_api::driver;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use warp::Filter;
+use warp::http::Method;
 
 #[derive(Debug, Serialize)]
 struct AttestationResponse {
@@ -128,8 +129,15 @@ async fn main() {
             }
         });
 
+    // Configure CORS to allow browser-based attestation verification
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(&[Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(vec!["Content-Type"]);
+
     let routes = health
-        .or(attestation_post);
+        .or(attestation_post)
+        .with(cors);
 
     println!("Attestation service ready!");
     warp::serve(routes)
