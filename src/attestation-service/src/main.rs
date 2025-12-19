@@ -6,6 +6,7 @@ use nsm_api::driver;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use warp::Filter;
+use warp::http::Method;
 
 type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
 
@@ -168,7 +169,13 @@ async fn main() {
             }
         });
 
-    let routes = health.or(attestation_post);
+    // Configure CORS to allow browser-based attestation verification
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(&[Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(vec!["Content-Type"]);
+
+    let routes = health.or(attestation_post).with(cors);
 
     println!("Attestation service ready!");
     warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
