@@ -86,7 +86,7 @@ fn get_attestation_document(
 
 #[tokio::main]
 async fn main() {
-    println!("Starting Attestation Service on port 5000...");
+    println!("Starting Attestation Service on port 8082...");
 
     // Health check endpoint
     let health = warp::path("health").map(|| {
@@ -178,5 +178,5 @@ async fn main() {
     let routes = health.or(attestation_post).with(cors);
 
     println!("Attestation service ready!");
-    warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 8082)).await;
 }
